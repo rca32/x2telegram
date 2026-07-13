@@ -19,10 +19,11 @@ $root = (Resolve-Path -LiteralPath $ProjectRoot).Path
 $config = Join-Path $root "config.toml"
 $executable = Join-Path $root ".venv\Scripts\x2telegram.exe"
 $runner = Join-Path $root "scripts\run-windows-scheduled-task.ps1"
+$hiddenLauncher = Join-Path $root "scripts\run-windows-scheduled-task-hidden.vbs"
 $protector = Join-Path $root "scripts\protect-local-secrets.ps1"
 $statePath = Join-Path $root "var\seen-tweets.json"
 
-foreach ($required in @($config, $executable, $runner, $protector)) {
+foreach ($required in @($config, $executable, $runner, $hiddenLauncher, $protector)) {
     if (-not (Test-Path -LiteralPath $required -PathType Leaf)) {
         throw "Required automation file is missing: $required"
     }
@@ -53,8 +54,14 @@ if ($LASTEXITCODE -ne 0) {
     throw "Bounded dry-run preflight failed; the scheduled task was not changed."
 }
 
-$powerShell = (Get-Command powershell.exe -ErrorAction Stop).Source
-$arguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "{0}" -ProjectRoot "{1}" -ConfigPath "{2}" -Count {3}' -f $runner, $root, $config, $Count
+$cscript = (Get-Command cscript.exe -ErrorAction Stop).Source
+& $cscript //B //NoLogo $hiddenLauncher -ValidateOnly -Count $Count
+if ($LASTEXITCODE -ne 0) {
+    throw "Hidden launcher validation failed; the scheduled task was not changed."
+}
+
+$wscript = (Get-Command wscript.exe -ErrorAction Stop).Source
+$arguments = '//B //NoLogo "{0}" -Count {1}' -f $hiddenLauncher, $Count
 $userSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
 $enabledText = if ($Enable) { "true" } else { "false" }
 
@@ -102,7 +109,7 @@ $xml = @"
   </Settings>
   <Actions Context="Author">
     <Exec>
-      <Command>$([System.Security.SecurityElement]::Escape($powerShell))</Command>
+      <Command>$([System.Security.SecurityElement]::Escape($wscript))</Command>
       <Arguments>$([System.Security.SecurityElement]::Escape($arguments))</Arguments>
       <WorkingDirectory>$([System.Security.SecurityElement]::Escape($root))</WorkingDirectory>
     </Exec>

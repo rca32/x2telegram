@@ -34,6 +34,7 @@ $countMatch = [regex]::Match([string]$task.Actions[0].Arguments, "(?i)-Count\s+(
     RepetitionInterval = if ($repetitionIntervalNode) { [string]$repetitionIntervalNode.InnerText } else { "" }
     RepetitionDuration = if ($repetitionDurationNode) { [string]$repetitionDurationNode.InnerText } else { "" }
     Count = if ($countMatch.Success) { [int]$countMatch.Groups[1].Value } else { $null }
+    HiddenWindowLauncher = ((Split-Path -Leaf ([string]$task.Actions[0].Execute)) -ieq "wscript.exe")
     LogonType = [string]$task.Principal.LogonType
     NextRunTime = $info.NextRunTime.ToString("o")
     LastRunTime = $info.LastRunTime.ToString("o")
