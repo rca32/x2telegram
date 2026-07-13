@@ -8,7 +8,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from x2telegram.cli import _check, _parser
+from x2telegram.cli import _check, _check_coding_agent, _parser
+from x2telegram.config import load_config
 
 
 class CliTests(unittest.TestCase):
@@ -68,6 +69,41 @@ class CliTests(unittest.TestCase):
                                     config=str(config_path), require_telegram=False
                                 )
                             )
+
+    def test_check_reports_explicit_codex_model_and_reasoning(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            prompt_path = root / "prompt.md"
+            prompt_path.write_text("Summarize.", encoding="utf-8")
+            config_path = root / "config.toml"
+            config_path.write_text(
+                '[summary]\nprovider = "coding_agent"\nagent = "codex"\n'
+                'model = "gpt-5.6-terra"\nreasoning_effort = "medium"\n'
+                'prompt_file = "prompt.md"\n',
+                encoding="utf-8",
+            )
+            help_text = " ".join(
+                (
+                    "--config",
+                    "--strict-config",
+                    "--ephemeral",
+                    "--sandbox",
+                    "--skip-git-repo-check",
+                    "--ignore-user-config",
+                    "--output-last-message",
+                )
+            )
+            with patch("x2telegram.cli.find_executable", return_value="codex"):
+                with patch(
+                    "x2telegram.cli.subprocess.run",
+                    return_value=subprocess.CompletedProcess(
+                        ["codex", "exec", "--help"], 0, help_text, ""
+                    ),
+                ):
+                    status = _check_coding_agent(load_config(config_path))
+
+            self.assertIn("model: gpt-5.6-terra", status)
+            self.assertIn("reasoning: medium", status)
 
     def test_check_explains_developer_oauth_is_not_session_cookie_auth(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

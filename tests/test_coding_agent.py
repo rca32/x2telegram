@@ -25,7 +25,12 @@ class CodingAgentSummarizerTests(unittest.TestCase):
             return subprocess.CompletedProcess(command, 0, "", "")
 
         summarizer = CodingAgentSummarizer(
-            agent="codex", prompt="Summarize.", max_input_items=1, max_output_chars=100
+            agent="codex",
+            prompt="Summarize.",
+            model="gpt-5.6-terra",
+            reasoning_effort="medium",
+            max_input_items=1,
+            max_output_chars=100,
         )
         with patch.dict(
             os.environ,
@@ -38,6 +43,11 @@ class CodingAgentSummarizerTests(unittest.TestCase):
         self.assertIn("--ephemeral", command)
         self.assertIn("read-only", command)
         self.assertIn("--ignore-user-config", command)
+        self.assertEqual(command[command.index("--model") + 1], "gpt-5.6-terra")
+        self.assertIn("--strict-config", command)
+        self.assertEqual(
+            command[command.index("--config") + 1], 'model_reasoning_effort="medium"'
+        )
         input_text = run.call_args.kwargs["input"]
         self.assertIn('"total_new_tweets":2', input_text)
         self.assertIn('"provided_tweets":1', input_text)

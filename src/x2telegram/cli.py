@@ -78,6 +78,7 @@ def _summarizer(config: AppConfig) -> Summarizer:
             agent=config.summary.agent,
             executable=config.summary.executable,
             model=config.summary.model,
+            reasoning_effort=config.summary.reasoning_effort,
             prompt=prompt_path.read_text(encoding="utf-8-sig"),
             timeout_seconds=config.summary.timeout_seconds,
             max_input_items=config.summary.max_input_items,
@@ -152,6 +153,8 @@ def _check_coding_agent(config: AppConfig) -> str:
             raise RuntimeError("codex exec --help failed")
         help_text = f"{result.stdout}\n{result.stderr}"
         required = (
+            "--config",
+            "--strict-config",
             "--ephemeral",
             "--sandbox",
             "--skip-git-repo-check",
@@ -164,7 +167,9 @@ def _check_coding_agent(config: AppConfig) -> str:
                 "codex CLI is too old or incompatible; missing required options: "
                 + ", ".join(missing)
             )
-        return "codex available and compatible"
+        model = config.summary.model or "CLI default"
+        reasoning = config.summary.reasoning_effort or "CLI default"
+        return f"codex available and compatible; model: {model}; reasoning: {reasoning}"
 
     result = subprocess.run(
         [resolved, "--version"],

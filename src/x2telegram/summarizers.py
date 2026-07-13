@@ -108,6 +108,7 @@ class CodingAgentSummarizer:
         prompt: str,
         executable: str = "",
         model: str = "",
+        reasoning_effort: str = "",
         timeout_seconds: int = 180,
         max_input_items: int = 50,
         max_output_chars: int = 8000,
@@ -119,6 +120,7 @@ class CodingAgentSummarizer:
         self.executable = executable.strip() or agent
         self.resolved_executable = shutil.which(self.executable) or self.executable
         self.model = model.strip()
+        self.reasoning_effort = reasoning_effort.strip()
         self.timeout_seconds = timeout_seconds
         self.max_input_items = max_input_items
         self.max_output_chars = max_output_chars
@@ -169,6 +171,10 @@ class CodingAgentSummarizer:
         ]
         if self.model:
             command.extend(["--model", self.model])
+        if self.reasoning_effort:
+            command.extend(
+                ["--strict-config", "--config", f'model_reasoning_effort="{self.reasoning_effort}"']
+            )
         command.append("-")
         return command
 

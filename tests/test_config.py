@@ -36,15 +36,35 @@ class ConfigTests(unittest.TestCase):
             root = Path(directory)
             config_path = root / "config.toml"
             config_path.write_text(
-                '[summary]\nprovider = "coding_agent"\nagent = "claude"\n'
+                '[summary]\nprovider = "coding_agent"\nagent = "codex"\n'
+                'model = "gpt-5.6-terra"\nreasoning_effort = "medium"\n'
                 'prompt_file = "prompt.md"\ntimeout_seconds = 30\nmax_input_items = 7\n',
                 encoding="utf-8",
             )
             config = load_config(config_path)
-            self.assertEqual(config.summary.agent, "claude")
+            self.assertEqual(config.summary.agent, "codex")
+            self.assertEqual(config.summary.model, "gpt-5.6-terra")
+            self.assertEqual(config.summary.reasoning_effort, "medium")
             self.assertEqual(config.summary.prompt_file, root / "prompt.md")
             self.assertEqual(config.summary.timeout_seconds, 30)
             self.assertEqual(config.summary.max_input_items, 7)
+
+    def test_codex_example_pins_balanced_model_and_reasoning(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        config = load_config(root / "config.example.toml")
+        self.assertEqual(config.summary.model, "gpt-5.6-terra")
+        self.assertEqual(config.summary.reasoning_effort, "medium")
+
+    def test_reasoning_effort_is_rejected_for_claude(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            config_path = Path(directory) / "config.toml"
+            config_path.write_text(
+                '[summary]\nprovider = "coding_agent"\nagent = "claude"\n'
+                'reasoning_effort = "medium"\nprompt_file = "prompt.md"\n',
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "supported only for the codex agent"):
+                load_config(config_path)
 
 
 if __name__ == "__main__":

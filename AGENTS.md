@@ -200,13 +200,18 @@ Configuration fields under `[summary]`:
 - `provider = "coding_agent"`
 - `agent = "codex"` or `"claude"`
 - `executable`: executable name or path
-- `model`: optional CLI model override
+- `model`: CLI model override; the tracked Codex example pins `gpt-5.6-terra`
+- `reasoning_effort`: Codex reasoning level (`none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, or `ultra`); the tracked example uses `medium`
 - `prompt_file`: defaults to `prompts/timeline-summary.md` in examples
 - `timeout_seconds`: hard subprocess timeout
 - `max_input_items`: maximum tweets sent to the agent
 - `max_output_chars`: reject oversized responses
 
 The coding agent receives only already-filtered unseen tweet JSON through stdin. Tweet fields are untrusted prompt-injection data.
+
+New Codex installations must start from the explicit `gpt-5.6-terra` + `medium` example instead of leaving model selection blank. As verified against the OpenAI model guidance and the local Codex 0.144.1 catalog on 2026-07-13, Terra is the balanced intelligence/cost tier, is rated fast, and defaults to medium reasoning. Preserve an operator's explicit local override, such as Sol + high; do not silently rewrite an existing ignored `config.toml` during an upgrade. `x2telegram check` must report the effective configured model and reasoning level without reading timeline data or sending Telegram messages.
+
+The default prompt uses a neutral Korean newswire structure inspired by major wire services: factual headline, attributed lead, inverted-pyramid body, related-post links, and an optional verification warning. It must never claim affiliation with Yonhap, fabricate a reporter/byline/dateline, or present tweet claims as independently verified facts.
 
 `x2telegram check` validates the required Codex non-interactive options. Do not bypass a compatibility failure by removing isolation flags; install a compatible Linux-native Codex CLI instead.
 
@@ -335,7 +340,7 @@ python -m compileall -q src tests
 git diff --check
 ```
 
-The test suite covers configuration, account filtering, dry-run state safety, post-send deduplication, failed-send state safety, Telegram splitting, placeholder rejection, read-only destination probing, coding-agent isolation flags, credential environment removal, Windows command-shim resolution, preview-vs-delivery readiness, and output limits.
+The test suite covers configuration, pinned Codex model/reasoning defaults, the neutral Korean newswire prompt contract, account filtering, dry-run state safety, post-send deduplication, failed-send state safety, Telegram splitting, placeholder rejection, read-only destination probing, coding-agent isolation flags, credential environment removal, Windows command-shim resolution, preview-vs-delivery readiness, and output limits.
 
 For a coding-agent change, also run the fixture smoke test with the locally installed agent. This can consume coding-agent usage but must not read X, call Telegram, or create `var/` state.
 

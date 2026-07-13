@@ -26,6 +26,7 @@ class SummaryConfig:
     agent: str = "codex"
     executable: str = ""
     model: str = ""
+    reasoning_effort: str = ""
     prompt_file: Path | None = None
     timeout_seconds: int = 180
     max_input_items: int = 50
@@ -86,6 +87,7 @@ def load_config(path: str | Path) -> AppConfig:
         agent=str(summary.get("agent", "codex")),
         executable=str(summary.get("executable", "")),
         model=str(summary.get("model", "")),
+        reasoning_effort=str(summary.get("reasoning_effort", "")),
         prompt_file=_path(base, summary.get("prompt_file")),
         timeout_seconds=int(summary.get("timeout_seconds", 180)),
         max_input_items=int(summary.get("max_input_items", 50)),
@@ -120,6 +122,23 @@ def _validate(config: AppConfig) -> None:
         raise ValueError("summary.max_chars_per_item must be at least 40")
     if config.summary.agent not in {"codex", "claude"}:
         raise ValueError("summary.agent must be 'codex' or 'claude'")
+    if config.summary.reasoning_effort not in {
+        "",
+        "none",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+        "ultra",
+    }:
+        raise ValueError(
+            "summary.reasoning_effort must be none, minimal, low, medium, high, "
+            "xhigh, max, or ultra"
+        )
+    if config.summary.reasoning_effort and config.summary.agent != "codex":
+        raise ValueError("summary.reasoning_effort is supported only for the codex agent")
     if config.summary.timeout_seconds < 1:
         raise ValueError("summary.timeout_seconds must be at least 1")
     if config.summary.max_input_items < 1:
