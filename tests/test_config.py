@@ -29,6 +29,21 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaises(FileNotFoundError):
                 read_list(missing)
 
+    def test_coding_agent_settings_are_loaded(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config_path = root / "config.toml"
+            config_path.write_text(
+                '[summary]\nprovider = "coding_agent"\nagent = "claude"\n'
+                'prompt_file = "prompt.md"\ntimeout_seconds = 30\nmax_input_items = 7\n',
+                encoding="utf-8",
+            )
+            config = load_config(config_path)
+            self.assertEqual(config.summary.agent, "claude")
+            self.assertEqual(config.summary.prompt_file, root / "prompt.md")
+            self.assertEqual(config.summary.timeout_seconds, 30)
+            self.assertEqual(config.summary.max_input_items, 7)
+
 
 if __name__ == "__main__":
     unittest.main()

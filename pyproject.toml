@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "x2telegram"
-version = "0.1.0"
+version = "0.2.0"
 description = "Read a bounded X timeline with bird, build a digest, and send it to Telegram."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -17,4 +17,3 @@ x2telegram = "x2telegram.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-

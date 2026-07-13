@@ -12,7 +12,7 @@ from .pipeline import Pipeline
 from .senders import TelegramSender
 from .sources import BirdTimelineSource, JsonFileTimelineSource, TimelineSource
 from .state import SeenTweetStore
-from .summarizers import DigestSummarizer
+from .summarizers import CodingAgentSummarizer, DigestSummarizer, Summarizer
 
 
 def _configure_stdio() -> None:
@@ -48,8 +48,29 @@ def _source(config: AppConfig, input_json: str | None) -> TimelineSource:
     )
 
 
+def _summarizer(config: AppConfig) -> Summarizer:
+    if config.summary.provider == "coding_agent":
+        prompt_path = config.summary.prompt_file
+        if prompt_path is None or not prompt_path.exists():
+            raise FileNotFoundError(f"summary prompt file was not found: {prompt_path}")
+        return CodingAgentSummarizer(
+            agent=config.summary.agent,
+            executable=config.summary.executable,
+            model=config.summary.model,
+            prompt=prompt_path.read_text(encoding="utf-8-sig"),
+            timeout_seconds=config.summary.timeout_seconds,
+            max_input_items=config.summary.max_input_items,
+            max_output_chars=config.summary.max_output_chars,
+        )
+    return DigestSummarizer(
+        title=config.summary.title,
+        max_items=config.summary.max_items,
+        max_chars_per_item=config.summary.max_chars_per_item,
+        keywords=read_list(config.summary.keywords_file),
+    )
+
+
 def _pipeline(config: AppConfig, *, input_json: str | None, dry_run: bool) -> Pipeline:
-    keywords = read_list(config.summary.keywords_file)
     accounts = read_list(config.source.accounts_file)
     sender = None
     if not dry_run:
@@ -57,12 +78,7 @@ def _pipeline(config: AppConfig, *, input_json: str | None, dry_run: bool) -> Pi
         sender = TelegramSender(disable_web_page_preview=config.telegram.disable_web_page_preview)
     return Pipeline(
         source=_source(config, input_json),
-        summarizer=DigestSummarizer(
-            title=config.summary.title,
-            max_items=config.summary.max_items,
-            max_chars_per_item=config.summary.max_chars_per_item,
-            keywords=keywords,
-        ),
+        summarizer=_summarizer(config),
         sender=sender,
         state=SeenTweetStore(config.state.path),
         accounts=accounts,
@@ -95,10 +111,18 @@ def _check(args: argparse.Namespace) -> int:
     )
     if result.returncode != 0:
         raise RuntimeError("bird --version failed")
+    agent_status = "not configured"
+    if config.summary.provider == "coding_agent":
+        agent_executable = config.summary.executable or config.summary.agent
+        resolved_agent = shutil.which(agent_executable)
+        if resolved_agent is None:
+            raise RuntimeError(f"coding agent CLI was not found: {agent_executable}")
+        agent_status = f"{config.summary.agent} available"
     load_env(config.telegram.env_file)
     telegram_ready = bool(os.environ.get("TELEGRAM_BOT_TOKEN") and os.environ.get("TELEGRAM_CHAT_ID"))
     print(f"Configuration: {Path(args.config).resolve()}")
     print(f"bird: {result.stdout.strip() or 'available'}")
+    print(f"Coding agent: {agent_status}")
     print(f"Telegram credentials: {'present' if telegram_ready else 'missing'}")
     print("No timeline was read and no Telegram message was sent.")
     return 0 if telegram_ready else 2

@@ -22,6 +22,13 @@ class SummaryConfig:
     max_items: int = 12
     max_chars_per_item: int = 280
     keywords_file: Path | None = None
+    agent: str = "codex"
+    executable: str = ""
+    model: str = ""
+    prompt_file: Path | None = None
+    timeout_seconds: int = 180
+    max_input_items: int = 50
+    max_output_chars: int = 8000
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,6 +81,13 @@ def load_config(path: str | Path) -> AppConfig:
         max_items=int(summary.get("max_items", 12)),
         max_chars_per_item=int(summary.get("max_chars_per_item", 280)),
         keywords_file=_path(base, summary.get("keywords_file")),
+        agent=str(summary.get("agent", "codex")),
+        executable=str(summary.get("executable", "")),
+        model=str(summary.get("model", "")),
+        prompt_file=_path(base, summary.get("prompt_file")),
+        timeout_seconds=int(summary.get("timeout_seconds", 180)),
+        max_input_items=int(summary.get("max_input_items", 50)),
+        max_output_chars=int(summary.get("max_output_chars", 8000)),
     )
     state_path = _path(base, state.get("path", "var/seen-tweets.json"))
     config = AppConfig(
@@ -96,12 +110,22 @@ def _validate(config: AppConfig) -> None:
         raise ValueError("source.timeline must be 'home' or 'following'")
     if not 1 <= config.source.count <= 1000:
         raise ValueError("source.count must be between 1 and 1000")
-    if config.summary.provider != "digest":
+    if config.summary.provider not in {"digest", "coding_agent"}:
         raise ValueError(f"unsupported summary provider: {config.summary.provider}")
     if config.summary.max_items < 1:
         raise ValueError("summary.max_items must be at least 1")
     if config.summary.max_chars_per_item < 40:
         raise ValueError("summary.max_chars_per_item must be at least 40")
+    if config.summary.agent not in {"codex", "claude"}:
+        raise ValueError("summary.agent must be 'codex' or 'claude'")
+    if config.summary.timeout_seconds < 1:
+        raise ValueError("summary.timeout_seconds must be at least 1")
+    if config.summary.max_input_items < 1:
+        raise ValueError("summary.max_input_items must be at least 1")
+    if config.summary.max_output_chars < 100:
+        raise ValueError("summary.max_output_chars must be at least 100")
+    if config.summary.provider == "coding_agent" and config.summary.prompt_file is None:
+        raise ValueError("summary.prompt_file is required for the coding_agent provider")
 
 
 def read_list(path: Path | None) -> list[str]:

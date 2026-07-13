@@ -6,9 +6,9 @@ accounts_file = "examples/accounts.txt"
 
 [summary]
 provider = "coding_agent"
-agent = "codex"
-executable = "codex"
-# model = "" # 비워 두면 Codex CLI 기본 모델 사용
+agent = "claude"
+executable = "claude"
+# model = "haiku" # 선택 사항. 비우면 Claude Code 기본 모델 사용
 prompt_file = "prompts/timeline-summary.md"
 timeout_seconds = 180
 max_input_items = 50
