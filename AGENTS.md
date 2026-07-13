@@ -2,6 +2,8 @@
 
 This repository contains the reusable `x2telegram` package. `README.md` is intentionally written only for a beginner human operator. Keep installation commands, architecture, provider details, safety implementation, tests, and troubleshooting in this file instead of moving them back into the README.
 
+Before creating or changing Windows scheduled automation, read `docs/windows-task-scheduler-playbook.md` and preserve its trigger, hidden-launcher, preflight, locking, logging, and ACL invariants.
+
 ## Human-facing workflow
 
 When helping a beginner, handle technical work end to end and ask the human only for decisions or secrets that cannot be inferred safely.
