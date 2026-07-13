@@ -59,7 +59,7 @@ Do not overwrite existing `config.toml`, `.env`, or `x-oauth.env`. Local config 
 
 The tracked env example files intentionally contain blank values. Never put convincing fake secrets such as `replace-me` in examples because presence-only scripts and humans can mistake them for completed setup.
 
-To verify local ignores in PowerShell, prefer `git check-ignore -v -- config.toml .env`. `git check-ignore -q` intentionally writes no stdout; inspect `$LASTEXITCODE` immediately instead of casting its empty output to `[bool]`.
+To verify local ignores in PowerShell, prefer `git check-ignore -v -- config.toml .env`. `git check-ignore -q` accepts only one pathname and intentionally writes no stdout; run it once per path and inspect `$LASTEXITCODE` immediately instead of casting its empty output to `[bool]`.
 
 Configuration examples:
 
