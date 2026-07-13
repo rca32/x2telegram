@@ -13,8 +13,9 @@ from x2telegram.cli import _check, _parser
 
 class CliTests(unittest.TestCase):
     def test_count_override_is_parsed(self) -> None:
-        args = _parser().parse_args(["run", "--count", "7", "--dry-run"])
+        args = _parser().parse_args(["run", "--count", "7", "--dry-run", "--quiet"])
         self.assertEqual(args.count, 7)
+        self.assertTrue(args.quiet)
 
     def test_check_distinguishes_preview_from_delivery_readiness(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

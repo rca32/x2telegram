@@ -8,6 +8,52 @@ from pathlib import Path
 from typing import Iterable
 
 
+class RunLock:
+    def __init__(self, path: str | Path) -> None:
+        self.path = Path(path)
+        self._stream = None
+
+    def __enter__(self) -> "RunLock":
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._stream = self.path.open("a+b")
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                self._stream.seek(0, os.SEEK_END)
+                if self._stream.tell() == 0:
+                    self._stream.write(b"\0")
+                    self._stream.flush()
+                self._stream.seek(0)
+                msvcrt.locking(self._stream.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(self._stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            self._stream.close()
+            self._stream = None
+            raise RuntimeError("another x2telegram run is already active") from exc
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        if self._stream is None:
+            return
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                self._stream.seek(0)
+                msvcrt.locking(self._stream.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(self._stream.fileno(), fcntl.LOCK_UN)
+        finally:
+            self._stream.close()
+            self._stream = None
+
+
 class SeenTweetStore:
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)
@@ -45,4 +91,3 @@ class SeenTweetStore:
             except FileNotFoundError:
                 pass
             raise
-

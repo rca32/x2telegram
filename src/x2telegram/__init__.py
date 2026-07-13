@@ -4,4 +4,4 @@ from .models import Tweet
 from .pipeline import Pipeline, RunResult
 
 __all__ = ["Pipeline", "RunResult", "Tweet"]
-__version__ = "0.3.2"
+__version__ = "0.4.0"

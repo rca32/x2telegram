@@ -20,7 +20,7 @@ from .sources import (
     find_executable,
     is_wsl_windows_npm_shim,
 )
-from .state import SeenTweetStore
+from .state import RunLock, SeenTweetStore
 from .summarizers import CodingAgentSummarizer, DigestSummarizer, Summarizer
 
 
@@ -42,6 +42,7 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--input-json", help="offline bird JSON fixture instead of invoking bird")
     run.add_argument("--count", type=int, help="override the bounded timeline read count")
     run.add_argument("--dry-run", action="store_true", help="print only; do not send or update state")
+    run.add_argument("--quiet", action="store_true", help="suppress digest text; keep safe counts")
 
     check = subparsers.add_parser("check", help="validate local commands and configuration")
     check.add_argument("--config", default="config.toml", help="TOML configuration path")
@@ -110,13 +111,16 @@ def _pipeline(
 
 def _run(args: argparse.Namespace) -> int:
     config = load_config(args.config)
-    result = _pipeline(
-        config, input_json=args.input_json, dry_run=args.dry_run, count_override=args.count
-    ).run(dry_run=args.dry_run)
-    if result.digest:
-        print(result.digest)
-    else:
-        print("No new tweets.")
+    lock_path = config.state.path.with_name(f"{config.state.path.name}.lock")
+    with RunLock(lock_path):
+        result = _pipeline(
+            config, input_json=args.input_json, dry_run=args.dry_run, count_override=args.count
+        ).run(dry_run=args.dry_run)
+    if not args.quiet:
+        if result.digest:
+            print(result.digest)
+        else:
+            print("No new tweets.")
     print(
         f"\nFetched: {result.fetched_count}; matched: {result.matched_count}; "
         f"new: {result.new_count}; sent chunks: {result.sent_chunks}"

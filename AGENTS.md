@@ -280,6 +280,46 @@ Manual fallback:
 
 Never pass real values through `bird --auth-token` or `bird --ct0` during assisted work because command arguments can appear in tool logs, command history, and process listings. Do not read or print an existing `x-oauth.env`. The coding-agent summarizer subprocess must continue stripping `AUTH_TOKEN`, `CT0`, and related X variables.
 
+## Windows scheduled automation
+
+Use the repository-managed scripts. Do not assemble `schtasks /TR` strings or rewrite a live task action for diagnostics.
+
+- `scripts/install-windows-scheduled-task.ps1`: protect secrets, run strict/read-only preflights, and idempotently register the task
+- `scripts/run-windows-scheduled-task.ps1`: invoke a quiet bounded run and append only sanitized JSONL status/count records
+- `scripts/get-windows-scheduled-task-status.ps1`: report trigger/settings/result and the latest safe log record
+- `scripts/protect-local-secrets.ps1`: remove inherited ACLs and grant access only to the current user, SYSTEM, and Administrators
+- `scripts/remove-windows-scheduled-task.ps1`: explicitly unregister the task
+
+Install the confirmed 08:00-22:00 daily schedule with a 30-minute interval and the same 10-item scope used in preview:
+
+```powershell
+.\scripts\install-windows-scheduled-task.ps1 `
+  -ProjectRoot (Get-Location).Path `
+  -StartTime "08:00" `
+  -EndTime "22:00" `
+  -IntervalMinutes 30 `
+  -Count 10 `
+  -Enable
+```
+
+The installer must preserve these invariants:
+
+- a `CalendarTrigger` with `DaysInterval=1`; no dated `EndBoundary`
+- a repetition window that includes the end-time run but stops afterward each day
+- explicit `-Count 10` in the managed runner action
+- strict Telegram destination check and matching bounded dry-run before task replacement
+- existing seen-state by default; use `-AllowInitialBacklog` only after explicit approval to send an unreviewed initial backlog
+- `StartWhenAvailable`, network requirement, wake support, battery allowance, 15-minute execution limit, two 5-minute retries, and `IgnoreNew`
+- `InteractiveToken`/least privilege, because Codex authentication and network access belong to the logged-in user
+
+The task therefore does not run while the user is fully logged out. Explain this limitation instead of silently switching to SYSTEM or embedding a Windows password.
+
+Every CLI run acquires an OS-level lock next to the seen-state. A concurrent scheduled or manual run must fail safely as `already_running`. Never remove the lock or allow overlapping state writers to make a test pass.
+
+The scheduled runner uses `--quiet`; it must never persist digest text, tweet URLs, credentials, or raw exception output. Its daily JSONL logs under `var/logs/` contain only timestamp, status category, exit code, bounded count, and the final numeric run summary. Diagnose with these logs and `LastTaskResult`; do not temporarily replace the registered action.
+
+Before enabling a new automation, complete one human-approved manual send so seen-state exists. Registering and preflighting an automation must not itself send a Telegram message.
+
 ## Tests and release checks
 
 Run before committing:
@@ -299,5 +339,4 @@ For a coding-agent change, also run the fixture smoke test with the locally inst
 
 - Explicit and operator-visible digest fallback when coding-agent execution fails
 - X list/search source providers
-- Windows Task Scheduler setup with confirmation of schedule and destination
 - Investigation queue and detailed research delivery
