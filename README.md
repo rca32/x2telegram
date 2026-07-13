@@ -92,6 +92,12 @@ coding agent가 `.env` 파일을 준비하면 bot token과 chat id는 사람이 
 
 > 매일 원하는 시간에 실행할 수 있도록 준비해줘. 실제 예약을 만들기 전 실행 시간과 전송 대상을 나에게 확인받아.
 
+WSL 또는 Linux에서 사용:
+
+> WSL Ubuntu에 x2telegram을 새로 설치하고 호환성을 점검해줘. Windows용 프로그램을 잘못 사용하지 않도록 Linux용 bird와 Codex를 확인하고, 실제 Telegram 전송 없이 최근 글 10개만 미리보기로 실행해줘.
+
+WSL은 Windows 브라우저의 X 로그인을 자동으로 읽지 못할 수 있습니다. 이 경우 coding agent가 WSL 내부의 비밀 파일을 준비하면, 사람이 `auth_token`과 `ct0` 값을 그 파일에 직접 입력합니다. X 개발자 포털에서 받은 API key나 OAuth client key는 이 두 브라우저 세션 쿠키를 대신할 수 없습니다.
+
 ## 사람이 꼭 기억할 것
 
 - bot token과 chat id를 대화창이나 GitHub에 올리지 않습니다.

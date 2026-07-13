@@ -23,6 +23,7 @@ Do not make the human choose providers, flags, paths, or test commands unless th
 - `bird` CLI 0.8.x or compatible
 - Logged-in Codex CLI or Claude Code CLI for coding-agent summaries
 - `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` for real delivery
+- Node.js 22+ when installing the npm-distributed bird CLI on Linux/WSL
 
 Quick diagnostic commands:
 
@@ -62,6 +63,57 @@ Configuration examples:
 - `config.digest.example.toml`: dependency-free deterministic digest for tests or fallback
 
 All relative paths are resolved from the configuration file directory.
+
+## Linux and WSL onboarding
+
+Use Linux-native executables inside WSL. A `command -v bird` or `command -v codex` result under `/mnt/c/.../AppData/.../npm` is a Windows npm shim leaking through the WSL PATH, not a valid Linux installation for this workflow. `x2telegram check` and timeline runs must fail with an actionable error when bird resolves this way.
+
+The npm-distributed bird 0.8.0 requires Node.js 22 or newer. Prefer an existing user-local version manager and do not use `sudo` merely to make onboarding pass:
+
+```bash
+source "$HOME/.nvm/nvm.sh"
+nvm install 22
+nvm use 22
+npm view @steipete/bird@0.8.0 engines deprecated
+npm install -g @steipete/bird@0.8.0
+npm install -g @openai/codex
+hash -r
+node --version
+command -v bird
+bird --version
+command -v codex
+codex --version
+```
+
+As observed on 2026-07-13, npm marks `@steipete/bird@0.8.0` deprecated even though it is the currently tested provider. Keep the tested version pinned, report the warning, and track a replacement separately; do not silently switch packages or weaken tests during onboarding.
+
+Install the Python package with Linux paths and protect local secret files:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+cp config.example.toml config.toml
+cp .env.example .env
+cp x-oauth.env.example x-oauth.env
+chmod 600 .env x-oauth.env
+```
+
+Windows browser-cookie extraction generally does not transfer into WSL. A copied file named `x-oauth.env` may contain developer OAuth client credentials rather than browser session cookies. The only keys accepted by this project's manual bird fallback are `AUTH_TOKEN` and `CT0`; validate key presence without printing values. Developer API/OAuth keys are not substitutes.
+
+For a one-off Windows-launched WSL process, existing Windows session-cookie environment variables can be bridged without creating another file. On this host, empirical WSL2 behavior uses the `/u` flag for Win32-to-WSL propagation:
+
+```powershell
+$previousWslenv = $env:WSLENV
+$parts = @($previousWslenv, "AUTH_TOKEN/u", "CT0/u") | Where-Object { $_ }
+$env:WSLENV = $parts -join ":"
+wsl.exe -d Ubuntu -- bash -lc 'cd /path/to/x2telegram && x2telegram check --config config.toml'
+$env:WSLENV = $previousWslenv
+```
+
+Verify direction with a non-secret probe if host behavior is uncertain. Never echo the real variables. For unattended Linux scheduling, prefer WSL-local owner-only env files (`chmod 600`) over a transient Windows environment bridge.
+
+The configured Codex CLI must support `--ephemeral`, `--sandbox`, `--skip-git-repo-check`, `--ignore-user-config`, and `--output-last-message`. `x2telegram check` probes these options and must reject an older incompatible CLI instead of silently dropping a security boundary.
 
 ## Normal operation
 
@@ -146,6 +198,8 @@ Configuration fields under `[summary]`:
 - `max_output_chars`: reject oversized responses
 
 The coding agent receives only already-filtered unseen tweet JSON through stdin. Tweet fields are untrusted prompt-injection data.
+
+`x2telegram check` validates the required Codex non-interactive options. Do not bypass a compatibility failure by removing isolation flags; install a compatible Linux-native Codex CLI instead.
 
 Codex boundary:
 

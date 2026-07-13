@@ -23,6 +23,11 @@ def find_executable(executable: str) -> str | None:
     return None
 
 
+def is_wsl_windows_npm_shim(executable: str) -> bool:
+    normalized = executable.replace("\\", "/").casefold()
+    return normalized.startswith("/mnt/") and "/appdata/roaming/npm/" in normalized
+
+
 def _parse_tweets(payload: object) -> list[Tweet]:
     if isinstance(payload, dict):
         payload = payload.get("tweets", payload.get("items", []))
@@ -55,9 +60,15 @@ class BirdTimelineSource:
         return command
 
     def fetch(self) -> list[Tweet]:
+        command = self.command
+        if is_wsl_windows_npm_shim(command[0]):
+            raise RuntimeError(
+                "bird resolved to a Windows npm shim inside WSL; activate Linux-native Node 22+ "
+                "and install a Linux-native bird CLI earlier in PATH"
+            )
         try:
             result = subprocess.run(
-                self.command,
+                command,
                 check=False,
                 capture_output=True,
                 text=True,

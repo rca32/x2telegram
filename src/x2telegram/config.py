@@ -156,3 +156,17 @@ def load_env(path: Path | None) -> None:
             value = value[1:-1]
         if key:
             os.environ.setdefault(key, value)
+
+
+def read_env_keys(path: Path | None) -> set[str]:
+    if path is None or not path.exists():
+        return set()
+    keys: set[str] = set()
+    for raw in path.read_text(encoding="utf-8-sig").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key = line.split("=", 1)[0].strip()
+        if key:
+            keys.add(key)
+    return keys

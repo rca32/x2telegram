@@ -6,10 +6,16 @@ import subprocess
 import sys
 from pathlib import Path
 
-from .config import AppConfig, load_config, load_env, read_list
+from .config import AppConfig, load_config, load_env, read_env_keys, read_list
 from .pipeline import Pipeline
 from .senders import TelegramSender
-from .sources import BirdTimelineSource, JsonFileTimelineSource, TimelineSource, find_executable
+from .sources import (
+    BirdTimelineSource,
+    JsonFileTimelineSource,
+    TimelineSource,
+    find_executable,
+    is_wsl_windows_npm_shim,
+)
 from .state import SeenTweetStore
 from .summarizers import CodingAgentSummarizer, DigestSummarizer, Summarizer
 
@@ -116,12 +122,66 @@ def _run(args: argparse.Namespace) -> int:
     return 0
 
 
+def _check_coding_agent(config: AppConfig) -> str:
+    if config.summary.provider != "coding_agent":
+        return "not configured"
+
+    agent = config.summary.agent
+    agent_executable = config.summary.executable or agent
+    resolved = find_executable(agent_executable)
+    if resolved is None:
+        raise RuntimeError(f"coding agent CLI was not found: {agent_executable}")
+
+    if agent == "codex":
+        result = subprocess.run(
+            [resolved, "exec", "--help"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        if result.returncode != 0:
+            raise RuntimeError("codex exec --help failed")
+        help_text = f"{result.stdout}\n{result.stderr}"
+        required = (
+            "--ephemeral",
+            "--sandbox",
+            "--skip-git-repo-check",
+            "--ignore-user-config",
+            "--output-last-message",
+        )
+        missing = [option for option in required if option not in help_text]
+        if missing:
+            raise RuntimeError(
+                "codex CLI is too old or incompatible; missing required options: "
+                + ", ".join(missing)
+            )
+        return "codex available and compatible"
+
+    result = subprocess.run(
+        [resolved, "--version"],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if result.returncode != 0:
+        raise RuntimeError("claude --version failed")
+    return "claude available"
+
+
 def _check(args: argparse.Namespace) -> int:
     config = load_config(args.config)
+    auth_env_keys = read_env_keys(config.source.auth_env_file)
     load_env(config.source.auth_env_file)
     executable = find_executable(config.source.executable)
     if executable is None:
         raise RuntimeError(f"bird CLI was not found: {config.source.executable}")
+    if is_wsl_windows_npm_shim(executable):
+        raise RuntimeError(
+            "bird resolves to a Windows npm shim inside WSL; activate Linux-native Node 22+ "
+            "and install a Linux-native bird CLI earlier in PATH"
+        )
     result = subprocess.run(
         [executable, "--version"], capture_output=True, text=True, encoding="utf-8", errors="replace"
     )
@@ -135,16 +195,17 @@ def _check(args: argparse.Namespace) -> int:
         errors="replace",
     )
     if credential_result.returncode != 0:
+        required_cookie_keys = {"AUTH_TOKEN", "CT0"}
+        if config.source.auth_env_file is not None and config.source.auth_env_file.exists():
+            if not required_cookie_keys.issubset(auth_env_keys):
+                raise RuntimeError(
+                    "the configured X auth env file does not contain AUTH_TOKEN and CT0; "
+                    "developer OAuth client credentials are not browser session cookies"
+                )
         raise RuntimeError(
             "X credentials are not ready; sign in to X in a supported browser or configure x-oauth.env"
         )
-    agent_status = "not configured"
-    if config.summary.provider == "coding_agent":
-        agent_executable = config.summary.executable or config.summary.agent
-        resolved_agent = find_executable(agent_executable)
-        if resolved_agent is None:
-            raise RuntimeError(f"coding agent CLI was not found: {agent_executable}")
-        agent_status = f"{config.summary.agent} available"
+    agent_status = _check_coding_agent(config)
     load_env(config.telegram.env_file)
     telegram_ready = bool(os.environ.get("TELEGRAM_BOT_TOKEN") and os.environ.get("TELEGRAM_CHAT_ID"))
     print(f"Configuration: {Path(args.config).resolve()}")

@@ -37,6 +37,62 @@ class CliTests(unittest.TestCase):
             self.assertEqual(preview, 0)
             self.assertEqual(delivery, 2)
 
+    def test_check_rejects_old_codex_missing_security_flags(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            prompt_path = root / "prompt.md"
+            prompt_path.write_text("Summarize.", encoding="utf-8")
+            config_path = root / "config.toml"
+            config_path.write_text(
+                '[summary]\nprovider = "coding_agent"\nagent = "codex"\n'
+                'prompt_file = "prompt.md"\n',
+                encoding="utf-8",
+            )
+            results = [
+                subprocess.CompletedProcess(["bird", "--version"], 0, "0.8.0", ""),
+                subprocess.CompletedProcess(["bird", "check"], 0, "ready", ""),
+                subprocess.CompletedProcess(
+                    ["codex", "exec", "--help"], 0, "--sandbox --ephemeral", ""
+                ),
+            ]
+            with patch.dict(os.environ, {"AUTH_TOKEN": "secret", "CT0": "secret"}, clear=True):
+                with patch(
+                    "x2telegram.cli.find_executable",
+                    side_effect=lambda executable: f"/usr/bin/{executable}",
+                ):
+                    with patch("x2telegram.cli.subprocess.run", side_effect=results):
+                        with self.assertRaisesRegex(RuntimeError, "--ignore-user-config"):
+                            _check(
+                                argparse.Namespace(
+                                    config=str(config_path), require_telegram=False
+                                )
+                            )
+
+    def test_check_explains_developer_oauth_is_not_session_cookie_auth(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            auth_path = root / "x-oauth.env"
+            auth_path.write_text("CONSUMER_KEY=placeholder\n", encoding="utf-8")
+            config_path = root / "config.toml"
+            config_path.write_text(
+                '[source]\nauth_env_file = "x-oauth.env"\n'
+                '[summary]\nprovider = "digest"\n',
+                encoding="utf-8",
+            )
+            results = [
+                subprocess.CompletedProcess(["bird", "--version"], 0, "0.8.0", ""),
+                subprocess.CompletedProcess(["bird", "check"], 1, "not ready", ""),
+            ]
+            with patch.dict(os.environ, {}, clear=True):
+                with patch("x2telegram.cli.find_executable", return_value="/usr/bin/bird"):
+                    with patch("x2telegram.cli.subprocess.run", side_effect=results):
+                        with self.assertRaisesRegex(RuntimeError, "not browser session cookies"):
+                            _check(
+                                argparse.Namespace(
+                                    config=str(config_path), require_telegram=False
+                                )
+                            )
+
 
 if __name__ == "__main__":
     unittest.main()

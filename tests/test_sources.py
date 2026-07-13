@@ -22,7 +22,17 @@ class BirdTimelineSourceTests(unittest.TestCase):
         self.assertEqual(command[0], resolved)
         self.assertEqual(command[-3:], ["-n", "7", "--json"])
 
+    def test_wsl_windows_npm_shim_fails_with_actionable_error(self) -> None:
+        inherited = "/mnt/c/Users/example/AppData/Roaming/npm/bird"
+        source = BirdTimelineSource(count=7)
+
+        with patch("x2telegram.sources.shutil.which", return_value=inherited):
+            with patch("x2telegram.sources.subprocess.run") as run:
+                with self.assertRaisesRegex(RuntimeError, "Linux-native Node 22"):
+                    source.fetch()
+
+        run.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
-
