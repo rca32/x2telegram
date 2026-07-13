@@ -2,7 +2,7 @@
 
 This repository contains the reusable `x2telegram` package. `README.md` is intentionally written only for a beginner human operator. Keep installation commands, architecture, provider details, safety implementation, tests, and troubleshooting in this file instead of moving them back into the README.
 
-Before creating or changing Windows scheduled automation, read `docs/windows-task-scheduler-playbook.md` and preserve its trigger, hidden-launcher, preflight, locking, logging, and ACL invariants.
+Before creating or changing Windows scheduled automation, read shared playbook ID `windows.task-scheduler-automation` from `D:\workspaces\engineering-playbooks\playbooks\windows\task-scheduler-automation.md` and preserve its trigger, hidden-launcher, preflight, locking, logging, and ACL invariants. A standalone repository-local snapshot remains at `docs/windows-task-scheduler-playbook.md` for environments where the shared repository is not available; update the shared canonical document first and keep the snapshot synchronized.
 
 ## Human-facing workflow
 

@@ -1,3 +1,11 @@
+---
+id: windows.task-scheduler-automation
+title: Windows 작업 스케줄러 자동화 실전 가이드
+status: stable
+last_verified: 2026-07-13
+platform: Windows 10/11, Windows PowerShell 5.1+
+---
+
 # Windows 작업 스케줄러 자동화 실전 가이드
 
 이 문서 하나만으로 로그인한 Windows 사용자의 CLI 작업을 **콘솔 창 없이, 매일 반복 가능하고, 중복 실행과 비밀정보 노출을 막으며, 장애 원인을 확인할 수 있게** 구성하는 방법을 설명한다. 특정 프로젝트나 외부 문서를 전제로 하지 않는다.
