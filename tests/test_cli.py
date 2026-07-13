@@ -93,6 +93,33 @@ class CliTests(unittest.TestCase):
                                 )
                             )
 
+    def test_check_rejects_telegram_sample_placeholders_without_network_call(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            env_path = root / ".env"
+            env_path.write_text(
+                "TELEGRAM_BOT_TOKEN=replace-me\nTELEGRAM_CHAT_ID=replace-me\n",
+                encoding="utf-8",
+            )
+            config_path = root / "config.toml"
+            config_path.write_text('[summary]\nprovider = "digest"\n', encoding="utf-8")
+            results = [
+                subprocess.CompletedProcess(["bird", "--version"], 0, "0.8.0", ""),
+                subprocess.CompletedProcess(["bird", "check"], 0, "ready", ""),
+            ]
+            with patch.dict(os.environ, {}, clear=True):
+                with patch("x2telegram.cli.find_executable", return_value="bird.cmd"):
+                    with patch("x2telegram.cli.subprocess.run", side_effect=results):
+                        with patch("x2telegram.cli.probe_telegram_destination") as probe:
+                            result = _check(
+                                argparse.Namespace(
+                                    config=str(config_path), require_telegram=True
+                                )
+                            )
+
+            self.assertEqual(result, 2)
+            probe.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

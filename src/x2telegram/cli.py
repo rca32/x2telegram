@@ -8,7 +8,11 @@ from pathlib import Path
 
 from .config import AppConfig, load_config, load_env, read_env_keys, read_list
 from .pipeline import Pipeline
-from .senders import TelegramSender
+from .senders import (
+    TelegramSender,
+    probe_telegram_destination,
+    telegram_credentials_are_configured,
+)
 from .sources import (
     BirdTimelineSource,
     JsonFileTimelineSource,
@@ -207,13 +211,25 @@ def _check(args: argparse.Namespace) -> int:
         )
     agent_status = _check_coding_agent(config)
     load_env(config.telegram.env_file)
-    telegram_ready = bool(os.environ.get("TELEGRAM_BOT_TOKEN") and os.environ.get("TELEGRAM_CHAT_ID"))
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
+    telegram_ready = False
+    if telegram_credentials_are_configured(bot_token, chat_id):
+        try:
+            telegram_destination = probe_telegram_destination(bot_token, chat_id)
+        except (RuntimeError, ValueError) as exc:
+            telegram_status = f"configured but not reachable ({exc})"
+        else:
+            telegram_ready = True
+            telegram_status = f"ready: {telegram_destination}"
+    else:
+        telegram_status = "not configured (replace the sample values in .env)"
     print(f"Configuration: {Path(args.config).resolve()}")
     print(f"bird: {result.stdout.strip() or 'available'}")
     print("X credentials: ready (values hidden)")
     print(f"Coding agent: {agent_status}")
     print("Preview readiness: ready")
-    print(f"Telegram delivery: {'ready' if telegram_ready else 'not configured'}")
+    print(f"Telegram delivery: {telegram_status}")
     print("No timeline was read and no Telegram message was sent.")
     return 2 if args.require_telegram and not telegram_ready else 0
 

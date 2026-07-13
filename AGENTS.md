@@ -12,8 +12,9 @@ When helping a beginner, handle technical work end to end and ask the human only
 4. Ask the human to enter X and Telegram secrets directly into their respective local env files; never ask them to paste secrets into chat.
 5. Help choose all-following or an explicit account allowlist.
 6. Run checks and a dry-run preview first.
-7. Show a selective summary without exposing personalized timeline data unnecessarily.
-8. Require explicit human confirmation before a real Telegram send or recurring schedule is created.
+7. Treat blank/sample Telegram values as not configured and perform a read-only destination probe before claiming delivery readiness.
+8. Show a selective summary without exposing personalized timeline data unnecessarily.
+9. Require explicit human confirmation before a real Telegram send or recurring schedule is created.
 
 Do not make the human choose providers, flags, paths, or test commands unless there is a material product decision.
 
@@ -55,6 +56,10 @@ Copy-Item x-oauth.env.example x-oauth.env
 ```
 
 Do not overwrite existing `config.toml`, `.env`, or `x-oauth.env`. Local config and secret files are ignored by Git.
+
+The tracked env example files intentionally contain blank values. Never put convincing fake secrets such as `replace-me` in examples because presence-only scripts and humans can mistake them for completed setup.
+
+To verify local ignores in PowerShell, prefer `git check-ignore -v -- config.toml .env`. `git check-ignore -q` intentionally writes no stdout; inspect `$LASTEXITCODE` immediately instead of casting its empty output to `[bool]`.
 
 Configuration examples:
 
@@ -135,11 +140,13 @@ Validate configured executables and presence of Telegram variables:
 x2telegram check --config config.toml
 ```
 
-This returns success when preview prerequisites are ready even if Telegram is not configured. Require delivery readiness explicitly when needed:
+This returns success when preview prerequisites are ready even if Telegram is not configured. Blank values and placeholders such as `replace-me`, `your-*`, and `여기에_*` are not credentials. Require delivery readiness explicitly when needed:
 
 ```powershell
 x2telegram check --config config.toml --require-telegram
 ```
+
+When non-placeholder Telegram values exist, the check performs read-only Bot API `getMe` and `getChat` calls. It prints a bounded bot/destination display label without the token or raw chat id and sends no message. Do not claim delivery readiness merely because both environment variables are non-empty. A successful destination probe still does not replace the human's approval of the exact first message.
 
 Read the real X timeline and preview without Telegram or state mutation:
 
@@ -224,7 +231,9 @@ If the summarizer fails, times out, returns empty output, or exceeds its output 
 - Telegram delivery is a state-changing operation.
 - Require explicit approval for the exact destination and content immediately before a real send during interactive work.
 - Never print, commit, or include real bot tokens or chat ids in chat, logs, test fixtures, patches, or command arguments.
-- Ask the human to edit `.env` locally. Validate only whether required values are present.
+- Ask the human to edit `.env` locally. Reject blank and sample values, then use only read-only `getMe`/`getChat` probes to validate the bot and destination before a send is approved.
+- Report a bounded destination title or username, never the raw chat id. Say `configured but not reachable` when the API probe fails; do not collapse it into `ready`.
+- A destination probe is not a send-permission proof and must never trigger a test message implicitly.
 - If helping retrieve a private chat id, require the human to send `/start` to the bot first and use a method that does not expose the token in command output or history.
 - Do not edit the real `.env` with `apply_patch`, since patch content is visible in tool logs.
 
@@ -282,7 +291,7 @@ python -m compileall -q src tests
 git diff --check
 ```
 
-The test suite covers configuration, account filtering, dry-run state safety, post-send deduplication, failed-send state safety, Telegram splitting, coding-agent isolation flags, credential environment removal, Windows command-shim resolution, preview-vs-delivery readiness, and output limits.
+The test suite covers configuration, account filtering, dry-run state safety, post-send deduplication, failed-send state safety, Telegram splitting, placeholder rejection, read-only destination probing, coding-agent isolation flags, credential environment removal, Windows command-shim resolution, preview-vs-delivery readiness, and output limits.
 
 For a coding-agent change, also run the fixture smoke test with the locally installed agent. This can consume coding-agent usage but must not read X, call Telegram, or create `var/` state.
 

@@ -49,6 +49,12 @@ TELEGRAM_BOT_TOKEN=여기에_bot_token
 TELEGRAM_CHAT_ID=여기에_chat_id
 ```
 
+입력 후 coding agent에게 다음처럼 확인을 요청하세요.
+
+> Telegram 설정을 실제 메시지 전송 없이 점검해줘. sample 값이 남아 있으면 미설정으로 처리하고, 연결된 bot과 대상 채널 이름만 알려줘. token과 chat id는 출력하지 마.
+
+점검 결과에 실제 대상 채널 이름이 표시되기 전까지는 Telegram 설정이 완료된 것이 아닙니다. 이 점검은 bot과 채널 접근만 확인하며 메시지는 보내지 않습니다.
+
 ### 4. 요약할 계정 정하기
 
 - 팔로우 중인 모든 계정을 요약하려면 별도 목록이 필요 없습니다.
