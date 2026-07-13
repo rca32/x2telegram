@@ -71,6 +71,7 @@ def _summarizer(config: AppConfig) -> Summarizer:
 
 
 def _pipeline(config: AppConfig, *, input_json: str | None, dry_run: bool) -> Pipeline:
+    load_env(config.source.auth_env_file)
     accounts = read_list(config.source.accounts_file)
     sender = None
     if not dry_run:
@@ -103,6 +104,7 @@ def _run(args: argparse.Namespace) -> int:
 
 def _check(args: argparse.Namespace) -> int:
     config = load_config(args.config)
+    load_env(config.source.auth_env_file)
     executable = shutil.which(config.source.executable)
     if executable is None:
         raise RuntimeError(f"bird CLI was not found: {config.source.executable}")
@@ -111,6 +113,17 @@ def _check(args: argparse.Namespace) -> int:
     )
     if result.returncode != 0:
         raise RuntimeError("bird --version failed")
+    credential_result = subprocess.run(
+        [executable, "check", "--plain", "--no-color"],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if credential_result.returncode != 0:
+        raise RuntimeError(
+            "X credentials are not ready; sign in to X in a supported browser or configure x-oauth.env"
+        )
     agent_status = "not configured"
     if config.summary.provider == "coding_agent":
         agent_executable = config.summary.executable or config.summary.agent
@@ -122,6 +135,7 @@ def _check(args: argparse.Namespace) -> int:
     telegram_ready = bool(os.environ.get("TELEGRAM_BOT_TOKEN") and os.environ.get("TELEGRAM_CHAT_ID"))
     print(f"Configuration: {Path(args.config).resolve()}")
     print(f"bird: {result.stdout.strip() or 'available'}")
+    print("X credentials: ready (values hidden)")
     print(f"Coding agent: {agent_status}")
     print(f"Telegram credentials: {'present' if telegram_ready else 'missing'}")
     print("No timeline was read and no Telegram message was sent.")

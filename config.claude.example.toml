@@ -3,6 +3,7 @@ provider = "bird"
 timeline = "following"
 count = 100
 accounts_file = "examples/accounts.txt"
+auth_env_file = "x-oauth.env"
 
 [summary]
 provider = "coding_agent"
@@ -20,4 +21,3 @@ disable_web_page_preview = true
 
 [state]
 path = "var/seen-tweets.json"
-

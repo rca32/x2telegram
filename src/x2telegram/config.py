@@ -13,6 +13,7 @@ class SourceConfig:
     count: int = 100
     executable: str = "bird"
     accounts_file: Path | None = None
+    auth_env_file: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,6 +75,7 @@ def load_config(path: str | Path) -> AppConfig:
         count=int(source.get("count", 100)),
         executable=str(source.get("executable", "bird")),
         accounts_file=_path(base, source.get("accounts_file")),
+        auth_env_file=_path(base, source.get("auth_env_file")),
     )
     summary_config = SummaryConfig(
         provider=str(summary.get("provider", "digest")),
