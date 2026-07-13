@@ -1,134 +1,78 @@
 # x2telegram
 
-`x2telegram`은 X 타임라인을 제한된 범위로 읽고, 새 트윗만 digest로 요약해 Telegram으로 보내는 재사용 가능한 Python 패키지입니다.
+X에서 팔로우 중인 계정의 새 글을 읽어 짧게 요약하고 Telegram으로 보내는 도구입니다.
 
-현재 기본 구성은 다음과 같습니다.
+설치와 실행은 Codex나 Claude Code 같은 coding agent에게 맡기면 됩니다. 사람은 아래 준비와 확인만 하면 됩니다.
 
-- Source: 로컬 `bird` CLI의 home/following timeline
-- Summarizer: `codex exec` 또는 Claude Code print mode를 호출하는 coding-agent adapter
-- Sender: Telegram Bot API `sendMessage`
-- State: 성공적으로 전송한 tweet id를 JSON에 저장하는 dedupe store
+## 처음 한 번 준비할 것
 
-직접 LLM API를 연동하지 않고 이미 로그인된 coding-agent CLI를 비대화형으로 재사용합니다. 요약기는 새 트윗 JSON만 전달받으며 X/Telegram 인증값이나 프로젝트 파일에는 접근하지 않습니다. API 호출 없는 규칙 기반 `digest` provider도 fallback과 테스트 용도로 남아 있습니다.
+### 1. X 로그인
 
-## 요구 사항
+이 컴퓨터에서 X에 로그인해 두세요.
 
-- Python 3.11+
-- `bird` CLI 0.8.x 이상
-- `codex` CLI 또는 Claude Code CLI 중 하나와 해당 CLI의 유효한 로그인
-- 실제 전송 시 `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
+### 2. 요약에 사용할 coding agent 로그인
 
-## 설치
+Codex 또는 Claude Code 중 사용할 프로그램 하나에 로그인해 두세요. 기본 설정은 Codex를 사용합니다.
 
-```powershell
-cd D:\workspaces\tweet\x2telegram
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -e .
-Copy-Item config.example.toml config.toml
-Copy-Item .env.example .env
+### 3. Telegram 봇 만들기
+
+1. Telegram에서 `@BotFather`를 찾습니다.
+2. `/newbot`을 보내고 안내에 따라 봇을 만듭니다.
+3. 발급된 bot token을 안전한 곳에 보관합니다.
+4. 새로 만든 봇과 대화를 열고 `/start`를 보냅니다.
+5. Telegram chat id를 준비합니다. 찾는 방법을 모르면 coding agent에게 도움을 요청하세요.
+
+bot token과 chat id는 GitHub, README, 이슈 또는 대화창에 붙이지 마세요. coding agent가 로컬 `.env` 파일을 준비하면 그 파일에만 직접 입력하세요.
+
+```text
+TELEGRAM_BOT_TOKEN=여기에_bot_token
+TELEGRAM_CHAT_ID=여기에_chat_id
 ```
 
-`.env`에는 실제 Telegram 값을 넣되 커밋하지 않습니다. `examples/accounts.txt`가 비어 있으면 following timeline의 모든 계정을 포함합니다. 특정 계정만 받으려면 한 줄에 하나씩 username을 적습니다.
+### 4. 요약할 계정 정하기
 
-## 안전한 첫 실행
+- 팔로우 중인 모든 계정을 요약하려면 별도 목록이 필요 없습니다.
+- 특정 계정만 보려면 원하는 X username 목록을 준비하세요. `@`는 없어도 됩니다.
 
-먼저 dependency-free digest와 fixture로 전체 흐름을 확인합니다. 이 명령은 X, coding agent, Telegram에 접속하지 않고 상태 파일도 바꾸지 않습니다.
+## Coding agent에게 처음 요청하기
 
-```powershell
-x2telegram run --config config.digest.example.toml --input-json tests/fixtures/timeline.json --dry-run
-```
+이 프로젝트 폴더를 coding agent로 연 뒤 아래 문장을 그대로 요청하세요.
 
-그다음 fixture를 Codex 비대화형 모드로 요약해 adapter와 로그인을 확인합니다. X와 Telegram은 호출하지 않으며 상태도 바꾸지 않지만, Codex 사용량은 발생할 수 있습니다.
+> x2telegram을 처음 사용할 수 있게 설치하고 점검해줘. 실제 Telegram 전송은 하지 말고, 필요한 사람 작업을 하나씩 알려준 뒤 미리보기까지만 실행해줘.
 
-```powershell
-x2telegram run --config config.example.toml --input-json tests/fixtures/timeline.json --dry-run
-```
+coding agent가 `.env` 파일을 준비하면 bot token과 chat id는 사람이 직접 입력합니다. 입력을 마친 뒤에는 다음처럼 요청하세요.
 
-실제 X 타임라인을 읽되 Telegram으로 보내지 않으려면:
+> 비밀값은 출력하지 말고 설정 상태만 확인한 다음, 현재 X 타임라인 요약을 미리보기로 보여줘. Telegram에는 아직 보내지 마.
 
-```powershell
-x2telegram run --config config.toml --dry-run
-```
+## 실제로 보내기
 
-설정과 로컬 도구만 점검하려면:
+미리보기 내용을 사람이 확인한 뒤 다음처럼 명확하게 요청하세요.
 
-```powershell
-x2telegram check --config config.toml
-```
+> 방금 확인한 요약을 설정된 Telegram 채팅으로 실제 전송해줘.
 
-출력 내용을 확인한 뒤 실제 전송을 실행합니다.
+새 글이 없으면 아무 메시지도 보내지 않습니다. 정상적으로 보낸 글은 다음 실행에서 다시 보내지 않습니다.
 
-```powershell
-x2telegram run --config config.toml
-```
+## 자주 쓰는 요청 문장
 
-실제 전송이 모두 성공한 뒤에만 `var/seen-tweets.json`이 갱신됩니다. 새 트윗이 없으면 메시지를 보내지 않습니다.
+특정 계정만 요약:
 
-## 설정
+> `OpenAI`, `federalreserve`, `business` 계정만 요약하도록 바꾸고 미리보기를 실행해줘.
 
-```toml
-[source]
-provider = "bird"
-timeline = "following" # following 또는 home
-count = 100             # 항상 bounded read
-accounts_file = "examples/accounts.txt"
+모든 팔로우 계정으로 복원:
 
-[summary]
-provider = "coding_agent"
-agent = "codex"              # codex 또는 claude
-executable = "codex"
-prompt_file = "prompts/timeline-summary.md"
-timeout_seconds = 180
-max_input_items = 50          # coding-agent 입력 비용 상한
-max_output_chars = 8000       # 비정상 출력 방지
+> 계정 제한을 없애고 팔로우 중인 모든 계정을 대상으로 미리보기를 실행해줘.
 
-[telegram]
-env_file = ".env"
-disable_web_page_preview = true
+오류 점검:
 
-[state]
-path = "var/seen-tweets.json"
-```
+> x2telegram이 동작하지 않는 원인을 점검해줘. 인증값은 출력하지 말고 실제 Telegram 전송도 하지 마.
 
-모든 상대 경로는 `config.toml`의 위치를 기준으로 해석됩니다.
+정기 실행 준비:
 
-## Coding-agent 실행 경계
+> 매일 원하는 시간에 실행할 수 있도록 준비해줘. 실제 예약을 만들기 전 실행 시간과 전송 대상을 나에게 확인받아.
 
-Codex adapter는 stdin으로 prompt와 트윗 JSON을 넘기고 다음 경계를 적용합니다.
+## 사람이 꼭 기억할 것
 
-- `codex exec --ephemeral --sandbox read-only`
-- 비어 있는 임시 작업 디렉터리
-- user config 미로딩, 세션 기록 미보존
-- Telegram/X 관련 환경 변수 제거(Codex 자체 로그인 환경은 유지)
-- 최종 응답 파일만 읽고 timeout/출력 크기 초과 시 실패
-
-Claude Code adapter는 `config.claude.example.toml`을 사용합니다.
-
-- `claude --print --output-format json --max-turns 1`
-- `--safe-mode --tools "" --disallowedTools "mcp__*"`
-- 세션 미보존, 빈 임시 작업 디렉터리
-
-이 PC에는 현재 Claude Code CLI가 설치되어 있지 않아 Claude adapter는 mock 테스트로 검증됩니다. 설치 후 아래처럼 확인할 수 있습니다.
-
-```powershell
-Copy-Item config.claude.example.toml config.toml
-x2telegram check --config config.toml
-x2telegram run --config config.toml --input-json tests/fixtures/timeline.json --dry-run
-```
-
-Coding-agent 구독/로그인도 사용량 제한이나 별도 과금 정책이 적용될 수 있습니다. 비용 상한은 `source.count`, `max_input_items`, 실행 주기, 선택 모델로 관리합니다.
-
-## 테스트
-
-```powershell
-$env:PYTHONPATH = "src"
-python -m unittest discover -s tests -v
-```
-
-## 다음 확장 지점
-
-- coding-agent 실패 시 명시적으로 선택 가능한 digest fallback
-- X list/search source provider
-- Windows Task Scheduler용 실행 스크립트
-- 조사 queue와 상세 investigation 결과 전송
+- bot token과 chat id를 대화창이나 GitHub에 올리지 않습니다.
+- 처음에는 반드시 미리보기로 내용을 확인합니다.
+- 실제 Telegram 전송은 전송 대상과 내용을 확인한 뒤 명시적으로 요청합니다.
+- 요약은 원문을 대신하는 확정 정보가 아닙니다. 중요한 내용은 원문 링크와 공식 자료로 다시 확인합니다.
