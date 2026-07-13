@@ -18,9 +18,20 @@ foreach ($name in @(".env", "x-oauth.env")) {
         continue
     }
 
-    $acl = [System.Security.AccessControl.FileSecurity]::new()
-    $acl.SetOwner($currentSid)
+    $file = [System.IO.FileInfo]::new($path)
+    $acl = [System.IO.FileSystemAclExtensions]::GetAccessControl(
+        $file,
+        [System.Security.AccessControl.AccessControlSections]::Access
+    )
     $acl.SetAccessRuleProtection($true, $false)
+    $existingRules = $acl.GetAccessRules(
+        $true,
+        $true,
+        [System.Security.Principal.SecurityIdentifier]
+    )
+    foreach ($existingRule in $existingRules) {
+        [void]$acl.RemoveAccessRuleSpecific($existingRule)
+    }
     foreach ($sid in @($currentSid, $systemSid, $administratorsSid)) {
         $rule = [System.Security.AccessControl.FileSystemAccessRule]::new(
             $sid,
@@ -31,7 +42,7 @@ foreach ($name in @(".env", "x-oauth.env")) {
         )
         [void]$acl.AddAccessRule($rule)
     }
-    Set-Acl -LiteralPath $path -AclObject $acl
+    [System.IO.FileSystemAclExtensions]::SetAccessControl($file, $acl)
     $protected.Add($name)
 }
 

@@ -288,7 +288,7 @@ Use the repository-managed scripts. Do not assemble `schtasks /TR` strings or re
 - `scripts/run-windows-scheduled-task-hidden.vbs`: launch the PowerShell runner through console-free `wscript.exe` and wait for its exit code
 - `scripts/run-windows-scheduled-task.ps1`: invoke a quiet bounded run and append only sanitized JSONL status/count records
 - `scripts/get-windows-scheduled-task-status.ps1`: report trigger/settings/result and the latest safe log record
-- `scripts/protect-local-secrets.ps1`: remove inherited ACLs and grant access only to the current user, SYSTEM, and Administrators
+- `scripts/protect-local-secrets.ps1`: idempotently remove inherited/extra ACLs and grant access only to the current user, SYSTEM, and Administrators
 - `scripts/remove-windows-scheduled-task.ps1`: explicitly unregister the task
 
 Install the confirmed 08:00-22:00 daily schedule with a 30-minute interval and the same 10-item scope used in preview:
