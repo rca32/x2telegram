@@ -1,0 +1,7 @@
+# Optional topic signals used to rank the digest.
+economy
+inflation
+market
+rates
+AI
+

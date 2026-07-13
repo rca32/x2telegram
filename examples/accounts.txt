@@ -1,0 +1,3 @@
+# Optional allowlist. Leave this file empty to include every account.
+# OpenAI
+

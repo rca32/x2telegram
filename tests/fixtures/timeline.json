@@ -1,0 +1,30 @@
+[
+  {
+    "id": "1003",
+    "text": "Central bank rates remain unchanged while inflation slows.",
+    "createdAt": "Mon Jul 13 01:03:00 +0000 2026",
+    "replyCount": 4,
+    "retweetCount": 12,
+    "likeCount": 80,
+    "author": {"username": "macrodesk", "name": "Macro Desk"}
+  },
+  {
+    "id": "1002",
+    "text": "A new AI model was released today.",
+    "createdAt": "Mon Jul 13 01:02:00 +0000 2026",
+    "replyCount": 2,
+    "retweetCount": 5,
+    "likeCount": 40,
+    "author": {"username": "techwire", "name": "Tech Wire"}
+  },
+  {
+    "id": "1001",
+    "text": "Morning market update and economy calendar.",
+    "createdAt": "Mon Jul 13 01:01:00 +0000 2026",
+    "replyCount": 1,
+    "retweetCount": 3,
+    "likeCount": 20,
+    "author": {"username": "macrodesk", "name": "Macro Desk"}
+  }
+]
+
