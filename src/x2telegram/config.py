@@ -10,7 +10,7 @@ from pathlib import Path
 class SourceConfig:
     provider: str = "bird"
     timeline: str = "following"
-    count: int = 100
+    count: int = 20
     executable: str = "bird"
     accounts_file: Path | None = None
     auth_env_file: Path | None = None
@@ -72,7 +72,7 @@ def load_config(path: str | Path) -> AppConfig:
     source_config = SourceConfig(
         provider=str(source.get("provider", "bird")),
         timeline=str(source.get("timeline", "following")),
-        count=int(source.get("count", 100)),
+        count=int(source.get("count", 20)),
         executable=str(source.get("executable", "bird")),
         accounts_file=_path(base, source.get("accounts_file")),
         auth_env_file=_path(base, source.get("auth_env_file")),

@@ -11,7 +11,9 @@ dist/
 !.env.example
 telegram.env
 x-oauth.env
+config.toml
+accounts.txt
+.birdrc.json5
 
 var/
 *.log
-

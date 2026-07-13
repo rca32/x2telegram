@@ -1,8 +1,8 @@
 [source]
 provider = "bird"
 timeline = "following"
-count = 100
-accounts_file = "examples/accounts.txt"
+count = 20
+accounts_file = ""
 auth_env_file = "x-oauth.env"
 
 [summary]

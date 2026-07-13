@@ -53,7 +53,7 @@ For the manual X-cookie fallback only:
 Copy-Item x-oauth.env.example x-oauth.env
 ```
 
-Do not overwrite existing `config.toml`, `.env`, or `x-oauth.env`. Real secret files are ignored by Git.
+Do not overwrite existing `config.toml`, `.env`, or `x-oauth.env`. Local config and secret files are ignored by Git.
 
 Configuration examples:
 
@@ -83,10 +83,16 @@ Validate configured executables and presence of Telegram variables:
 x2telegram check --config config.toml
 ```
 
+This returns success when preview prerequisites are ready even if Telegram is not configured. Require delivery readiness explicitly when needed:
+
+```powershell
+x2telegram check --config config.toml --require-telegram
+```
+
 Read the real X timeline and preview without Telegram or state mutation:
 
 ```powershell
-x2telegram run --config config.toml --dry-run
+x2telegram run --config config.toml --count 10 --dry-run
 ```
 
 Real delivery, only after explicit approval of destination and previewed content:
@@ -99,13 +105,13 @@ State is written only after every Telegram message chunk succeeds. No message is
 
 ## Account selection
 
-`source.accounts_file` points to `examples/accounts.txt` by default.
+`source.accounts_file` is empty by default, which includes all accounts in the bounded following timeline.
 
-- An empty file means all accounts in the following timeline.
-- For an allowlist, use one X username per line; `@` is optional.
+- For an allowlist, copy `examples/accounts.txt` to the ignored local `accounts.txt`, add one X username per line (`@` is optional), and set `accounts_file = "accounts.txt"` in ignored local `config.toml`.
 - Missing configured list files fail closed. Do not silently broaden the account scope.
+- Never place a personal account allowlist in tracked example files.
 
-Keep X reads bounded with `source.count` and `bird -n`/`--count`. Use `--json` for programmatic reads. Do not use unbounded pagination.
+Keep X reads bounded with `source.count` and `bird -n`/`--count`. The example default is 20; use `x2telegram run --count <n>` for a smaller one-off preview. Use `--json` for programmatic reads. Do not use unbounded pagination.
 
 ## Architecture
 
@@ -188,6 +194,8 @@ bird whoami --plain --no-color
 
 Report only readiness, credential source, and the intended account. `bird check` masks values; preserve that masking. `whoami` may expose personalized account identity, so summarize selectively.
 
+Prefer `x2telegram check --config config.toml` during onboarding. Upstream `bird check` may say `Ready to tweet!` even when it is used only to verify read credentials; this is generic upstream wording and does not mean x2telegram posted or will post anything.
+
 If the default browser profile is not detected, try an explicit profile without exposing cookies:
 
 ```powershell
@@ -220,7 +228,7 @@ python -m compileall -q src tests
 git diff --check
 ```
 
-The test suite covers configuration, account filtering, dry-run state safety, post-send deduplication, failed-send state safety, Telegram splitting, coding-agent isolation flags, credential environment removal, and output limits.
+The test suite covers configuration, account filtering, dry-run state safety, post-send deduplication, failed-send state safety, Telegram splitting, coding-agent isolation flags, credential environment removal, Windows command-shim resolution, preview-vs-delivery readiness, and output limits.
 
 For a coding-agent change, also run the fixture smoke test with the locally installed agent. This can consume coding-agent usage but must not read X, call Telegram, or create `var/` state.
 

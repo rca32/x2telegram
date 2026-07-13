@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Protocol
@@ -10,6 +11,16 @@ from .models import Tweet
 
 class TimelineSource(Protocol):
     def fetch(self) -> list[Tweet]: ...
+
+
+def find_executable(executable: str) -> str | None:
+    resolved = shutil.which(executable)
+    if resolved:
+        return resolved
+    candidate = Path(executable).expanduser()
+    if candidate.is_file():
+        return str(candidate.resolve())
+    return None
 
 
 def _parse_tweets(payload: object) -> list[Tweet]:
@@ -37,7 +48,7 @@ class BirdTimelineSource:
 
     @property
     def command(self) -> list[str]:
-        command = [self.executable, "home"]
+        command = [find_executable(self.executable) or self.executable, "home"]
         if self.timeline == "following":
             command.append("--following")
         command.extend(["-n", str(self.count), "--json"])
@@ -53,7 +64,7 @@ class BirdTimelineSource:
                 encoding="utf-8",
                 errors="replace",
             )
-        except FileNotFoundError as exc:
+        except OSError as exc:
             raise RuntimeError(f"bird CLI was not found: {self.executable}") from exc
         if result.returncode != 0:
             detail = result.stderr.strip().splitlines()
@@ -73,4 +84,3 @@ class JsonFileTimelineSource:
     def fetch(self) -> list[Tweet]:
         with self.path.open("r", encoding="utf-8-sig") as stream:
             return _parse_tweets(json.load(stream))
-

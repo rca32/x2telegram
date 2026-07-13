@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -10,7 +9,7 @@ from pathlib import Path
 from .config import AppConfig, load_config, load_env, read_list
 from .pipeline import Pipeline
 from .senders import TelegramSender
-from .sources import BirdTimelineSource, JsonFileTimelineSource, TimelineSource
+from .sources import BirdTimelineSource, JsonFileTimelineSource, TimelineSource, find_executable
 from .state import SeenTweetStore
 from .summarizers import CodingAgentSummarizer, DigestSummarizer, Summarizer
 
@@ -31,18 +30,29 @@ def _parser() -> argparse.ArgumentParser:
     run = subparsers.add_parser("run", help="read, summarize, and optionally send the timeline")
     run.add_argument("--config", default="config.toml", help="TOML configuration path")
     run.add_argument("--input-json", help="offline bird JSON fixture instead of invoking bird")
+    run.add_argument("--count", type=int, help="override the bounded timeline read count")
     run.add_argument("--dry-run", action="store_true", help="print only; do not send or update state")
 
     check = subparsers.add_parser("check", help="validate local commands and configuration")
     check.add_argument("--config", default="config.toml", help="TOML configuration path")
+    check.add_argument(
+        "--require-telegram",
+        action="store_true",
+        help="return exit code 2 when Telegram delivery credentials are missing",
+    )
     return parser
 
 
-def _source(config: AppConfig, input_json: str | None) -> TimelineSource:
+def _source(
+    config: AppConfig, input_json: str | None, count_override: int | None = None
+) -> TimelineSource:
     if input_json:
         return JsonFileTimelineSource(Path(input_json).expanduser().resolve())
+    count = count_override if count_override is not None else config.source.count
+    if not 1 <= count <= 1000:
+        raise ValueError("--count must be between 1 and 1000")
     return BirdTimelineSource(
-        count=config.source.count,
+        count=count,
         timeline=config.source.timeline,
         executable=config.source.executable,
     )
@@ -70,7 +80,9 @@ def _summarizer(config: AppConfig) -> Summarizer:
     )
 
 
-def _pipeline(config: AppConfig, *, input_json: str | None, dry_run: bool) -> Pipeline:
+def _pipeline(
+    config: AppConfig, *, input_json: str | None, dry_run: bool, count_override: int | None = None
+) -> Pipeline:
     load_env(config.source.auth_env_file)
     accounts = read_list(config.source.accounts_file)
     sender = None
@@ -78,7 +90,7 @@ def _pipeline(config: AppConfig, *, input_json: str | None, dry_run: bool) -> Pi
         load_env(config.telegram.env_file)
         sender = TelegramSender(disable_web_page_preview=config.telegram.disable_web_page_preview)
     return Pipeline(
-        source=_source(config, input_json),
+        source=_source(config, input_json, count_override),
         summarizer=_summarizer(config),
         sender=sender,
         state=SeenTweetStore(config.state.path),
@@ -88,7 +100,9 @@ def _pipeline(config: AppConfig, *, input_json: str | None, dry_run: bool) -> Pi
 
 def _run(args: argparse.Namespace) -> int:
     config = load_config(args.config)
-    result = _pipeline(config, input_json=args.input_json, dry_run=args.dry_run).run(dry_run=args.dry_run)
+    result = _pipeline(
+        config, input_json=args.input_json, dry_run=args.dry_run, count_override=args.count
+    ).run(dry_run=args.dry_run)
     if result.digest:
         print(result.digest)
     else:
@@ -105,7 +119,7 @@ def _run(args: argparse.Namespace) -> int:
 def _check(args: argparse.Namespace) -> int:
     config = load_config(args.config)
     load_env(config.source.auth_env_file)
-    executable = shutil.which(config.source.executable)
+    executable = find_executable(config.source.executable)
     if executable is None:
         raise RuntimeError(f"bird CLI was not found: {config.source.executable}")
     result = subprocess.run(
@@ -127,7 +141,7 @@ def _check(args: argparse.Namespace) -> int:
     agent_status = "not configured"
     if config.summary.provider == "coding_agent":
         agent_executable = config.summary.executable or config.summary.agent
-        resolved_agent = shutil.which(agent_executable)
+        resolved_agent = find_executable(agent_executable)
         if resolved_agent is None:
             raise RuntimeError(f"coding agent CLI was not found: {agent_executable}")
         agent_status = f"{config.summary.agent} available"
@@ -137,9 +151,10 @@ def _check(args: argparse.Namespace) -> int:
     print(f"bird: {result.stdout.strip() or 'available'}")
     print("X credentials: ready (values hidden)")
     print(f"Coding agent: {agent_status}")
-    print(f"Telegram credentials: {'present' if telegram_ready else 'missing'}")
+    print("Preview readiness: ready")
+    print(f"Telegram delivery: {'ready' if telegram_ready else 'not configured'}")
     print("No timeline was read and no Telegram message was sent.")
-    return 0 if telegram_ready else 2
+    return 2 if args.require_telegram and not telegram_ready else 0
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -21,6 +21,7 @@ class ConfigTests(unittest.TestCase):
             config = load_config(config_path)
             self.assertEqual(config.source.accounts_file, root / "accounts.txt")
             self.assertEqual(config.source.auth_env_file, root / "x-oauth.env")
+            self.assertEqual(config.source.count, 20)
             self.assertEqual(config.summary.keywords_file, root / "keywords.txt")
             self.assertEqual(config.state.path, root / "data" / "seen.json")
 
